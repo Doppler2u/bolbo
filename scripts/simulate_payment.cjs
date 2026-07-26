@@ -17,7 +17,7 @@ async function run() {
     
     console.log("\n2. Calling Vercel ASP Auto-Miner...");
     // Use the native fetch API to hit the Vercel backend
-    const response = await fetch("https://bolbo-indol.vercel.app/agent/auto-mine", {
+    const response = await fetch("https://bolbo-gules.vercel.app/agent/auto-mine", {
         method: "GET",
         headers: {
             "x-payment": tx.hash
@@ -29,7 +29,7 @@ async function run() {
     
     if (data.success) {
         console.log("\n3. Fetching updated blockchain stats...");
-        const statsRes = await fetch("https://bolbo-indol.vercel.app/network/stats");
+        const statsRes = await fetch("https://bolbo-gules.vercel.app/network/stats");
         const statsData = await statsRes.json();
         console.log("Updated Stats:", statsData);
     }

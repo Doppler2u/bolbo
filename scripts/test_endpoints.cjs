@@ -1,5 +1,5 @@
 async function testEndpoints() {
-    const API_URL = "https://bolbo-indol.vercel.app";
+    const API_URL = "https://bolbo-gules.vercel.app";
     const dummyPayment = "0x5e300b6a765f2d819b27f34bab3d547d6a047bc4ec93ffff38450fba938bfa86";
 
     console.log("🔍 Running Comprehensive Health Check on Bolbo Vercel API...\n");
