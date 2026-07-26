@@ -9,7 +9,7 @@ async function main() {
   console.log("Using Wallet:", agentAddress);
 
   // Address of the deployed AgentRegistry from our previous deployment
-  const agentRegistryAddress = "0xF895940453590B3FC1bb4254fC570BD6cb8D4992";
+  const agentRegistryAddress = "0x0FE0B0b93591FE8fF6C69Df2ab2a7273aA9C9Cb5";
 
   // Get the contract instance
   const AgentRegistry = await hre.ethers.getContractFactory("AgentRegistry");
