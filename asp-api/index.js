@@ -247,7 +247,17 @@ app.get('/agent/auto-mine', async (req, res) => {
 
     } catch (err) {
         console.error("Auto-mine error:", err);
-        res.status(500).json({ error: "Automated mining failed. " + err.message });
+        
+        let errorMessage = "Automated mining failed. " + err.message;
+        
+        // Parse raw Solidity custom errors for a better User Experience
+        if (err.message.includes("0xfb8f41b2")) {
+            errorMessage = "ASP Wallet Error: Insufficient USDT Allowance. The ASP must approve the MiningManager to spend its USDT.";
+        } else if (err.message.includes("0xe450d38c")) {
+            errorMessage = "ASP Wallet Error: Insufficient USDT Balance. The ASP must be funded with USDT to pay the network fee.";
+        }
+
+        res.status(500).json({ error: errorMessage });
     }
 });
 
