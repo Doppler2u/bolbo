@@ -21,34 +21,44 @@ const mainnetProvider = new ethers.JsonRpcProvider('https://rpc.xlayer.tech');
 
 const TESTNET_USDT = "0x9e29b3aada05bf2d2c827af80bd28dc0b9b4fb0c";
 const MAINNET_USDT = "0x1e4a5963abfd975d8c9021ce480b42188849d41d";
-const ASP_WALLET = "0x78efA563Cd32C70C77118662B3962F5DbC1345a4";
+const ASP_WALLET = "0x162cacdfc22b966ef4f39060349ecbe6af66fb8c";
 const ASP_PRIVATE_KEY = process.env.ASP_PRIVATE_KEY;
 const MINING_MANAGER = "0x9b6144a161ba31B161cdb919Fac973938467FC97";
 const BOLBO_TOKEN = "0xF26D9a662A351BB146bAF88813c9706102FAC68a";
 
-function generateX402Response(reqUrl, baseDescription) {
+function send402Response(res, reqUrl, baseDescription) {
     const hybridDescription = `${baseDescription} | Hackathon Hybrid Architecture: Payment verification is executed on the X Layer Mainnet to fulfill OKX.ai listing compliance, while the Bolbo token minting and smart contracts execute on the X Layer Testnet for prototyping.`;
     
-    return {
-        x402Version: 2,
-        error: "Payment required. Please submit 0.001 USDT on the X Layer Mainnet.",
-        resource: {
-            url: `https://bolbo-gules.vercel.app${reqUrl}`,
-            description: hybridDescription,
-            mimeType: "application/json"
-        },
+    // 1. Build the exact x402 challenge JSON OKX is looking for
+    const challengeJson = {
+        x402Version: "1.0",
+        resource: "bolbo-request-" + Date.now(), 
         accepts: [
             {
-                scheme: "exact",
-                network: "eip155:196", // X Layer Mainnet!
-                asset: MAINNET_USDT,
-                amount: "1000", // 0.001 USDT (6 decimals)
+                scheme: "EVM",
+                network: "196", // OKX X Layer Mainnet
+                asset: "USDT",
+                amount: "0.001",
                 payTo: ASP_WALLET,
                 maxTimeoutSeconds: 300,
-                extra: { name: "USDT", version: "1" }
+                extra: "{}"
             }
         ]
     };
+
+    // 2. Convert the JSON object into a Base64 string
+    const base64Challenge = Buffer.from(JSON.stringify(challengeJson)).toString('base64');
+
+    // 3. Set the specific Headers that the OKX backend strictly requires
+    res.setHeader("PAYMENT-REQUIRED", base64Challenge);
+    res.setHeader("Access-Control-Expose-Headers", "PAYMENT-REQUIRED");
+
+    // 4. Return the 402 status along with a JSON body for debugging
+    return res.status(402).json({
+        error: "Payment required. Please submit 0.001 USDT on the X Layer Mainnet.",
+        description: hybridDescription,
+        challenge: challengeJson
+    });
 }
 // --------------------------
 
@@ -193,10 +203,7 @@ async function verifyPayment(paymentProof) {
 app.get('/agent/oracle', async (req, res) => {
     const paymentProof = req.headers['x-payment'];
     if (!paymentProof) {
-        return res.status(402).json(generateX402Response(
-            req.url, 
-            "Provides deep network analytics and hash rate insights for the Bolbo economy."
-        ));
+        return send402Response(res, req.url, "Provides deep network analytics and hash rate insights for the Bolbo economy.");
     }
     
     const verification = await verifyPayment(paymentProof);
@@ -229,10 +236,7 @@ app.get('/agent/oracle', async (req, res) => {
 app.get('/agent/auto-mine', async (req, res) => {
     const paymentProof = req.headers['x-payment'];
     if (!paymentProof) {
-        return res.status(402).json(generateX402Response(
-            req.url, 
-            "Autonomously mine Bolbo memecoins. The Cloud ASP will solve the puzzle, pay the gas, and deliver 100 Bolbo directly to your wallet."
-        ));
+        return send402Response(res, req.url, "Autonomously mine Bolbo memecoins. The Cloud ASP will solve the puzzle, pay the gas, and deliver 100 Bolbo directly to your wallet.");
     }
     
     const verification = await verifyPayment(paymentProof);
