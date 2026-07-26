@@ -151,6 +151,38 @@ app.get('/network/stats', async (req, res) => {
 // 💎 PREMIUM AI SERVICES (GATED VIA x402)
 // ==========================================
 
+async function verifyPayment(paymentProof) {
+    if (!paymentProof) return { valid: false, error: "Missing x-payment header." };
+    try {
+        const txReceipt = await provider.getTransactionReceipt(paymentProof);
+        if (!txReceipt || txReceipt.status === 0) {
+            return { valid: false, error: "Transaction failed or not found. Need Testnet USDT? Get it here: https://web3.okx.com/xlayer/faucet/xlayerfaucet" };
+        }
+        
+        const transferEventSignature = ethers.id("Transfer(address,address,uint256)");
+        let validPaymentFound = false;
+        let userWallet = "0xUnknown";
+
+        for (const log of txReceipt.logs) {
+            if (log.address.toLowerCase() === OFFICIAL_USDT.toLowerCase() && log.topics[0] === transferEventSignature) {
+                const toAddress = ethers.dataSlice(log.topics[2], 12);
+                const amount = BigInt(log.data);
+                if (toAddress.toLowerCase() === ASP_WALLET.toLowerCase() && amount >= 1000n) {
+                    validPaymentFound = true;
+                    userWallet = ethers.getAddress(ethers.dataSlice(log.topics[1], 12));
+                    break;
+                }
+            }
+        }
+        if (!validPaymentFound) {
+            return { valid: false, error: "Invalid Payment. You must send exactly 0.001 Testnet USDT to the ASP Wallet. Get free Testnet USDT here: https://web3.okx.com/xlayer/faucet/xlayerfaucet" };
+        }
+        return { valid: true, userWallet };
+    } catch (e) {
+        return { valid: false, error: "Failed to verify transaction hash." };
+    }
+}
+
 // The Premium AI Data Feed
 app.get('/agent/oracle', async (req, res) => {
     const paymentProof = req.headers['x-payment'];
@@ -159,6 +191,11 @@ app.get('/agent/oracle', async (req, res) => {
             req.url, 
             "Provides deep network analytics and hash rate insights for the Bolbo economy."
         ));
+    }
+    
+    const verification = await verifyPayment(paymentProof);
+    if (!verification.valid) {
+        return res.status(402).json({ error: verification.error });
     }
     
     try {
@@ -192,48 +229,15 @@ app.get('/agent/auto-mine', async (req, res) => {
         ));
     }
     
+    const verification = await verifyPayment(paymentProof);
+    if (!verification.valid) {
+        return res.status(402).json({ error: verification.error });
+    }
+    const userWallet = verification.userWallet;
+    
     try {
         const aspWallet = new ethers.Wallet(ASP_PRIVATE_KEY, provider);
         
-        // 1. Extract and Verify Payment Transaction
-        let userWallet = "0xUnknown";
-        try {
-            const txReceipt = await provider.getTransactionReceipt(paymentProof);
-            if (!txReceipt || txReceipt.status === 0) {
-                return res.status(400).json({ 
-                    error: "Transaction failed or not found. Need Testnet USDT? Get it here: https://web3.okx.com/xlayer/faucet/xlayerfaucet" 
-                });
-            }
-
-            // Verify it is an ERC20 Transfer to the ASP Wallet
-            // Transfer event signature: Transfer(address indexed from, address indexed to, uint256 value)
-            const transferEventSignature = ethers.id("Transfer(address,address,uint256)");
-            
-            let validPaymentFound = false;
-            for (const log of txReceipt.logs) {
-                if (log.address.toLowerCase() === OFFICIAL_USDT.toLowerCase() && log.topics[0] === transferEventSignature) {
-                    const toAddress = ethers.dataSlice(log.topics[2], 12); // Extract address from indexed topic
-                    const amount = BigInt(log.data);
-                    
-                    if (toAddress.toLowerCase() === ASP_WALLET.toLowerCase() && amount >= 1000n) { // 1000 = 0.001 USDT (6 decimals)
-                        validPaymentFound = true;
-                        userWallet = ethers.dataSlice(log.topics[1], 12); // Extract 'from' address
-                        userWallet = ethers.getAddress(userWallet); // Format as checksum address
-                        break;
-                    }
-                }
-            }
-
-            if (!validPaymentFound) {
-                return res.status(402).json({ 
-                    error: "Invalid Payment. You must send exactly 0.001 Testnet USDT to the ASP Wallet. Get free Testnet USDT here: https://web3.okx.com/xlayer/faucet/xlayerfaucet" 
-                });
-            }
-
-        } catch (e) {
-            console.error("Failed to verify payment tx", e);
-            return res.status(400).json({ error: "Failed to verify transaction hash." });
-        }
         const miningAbi = [
             "function currentActiveChallengeId() external view returns (uint256)",
             "function commitSolution(uint256 challengeId, bytes32 commitHash) external",
