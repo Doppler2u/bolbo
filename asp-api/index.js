@@ -15,28 +15,33 @@ app.use((req, res, next) => {
     next();
 });
 
-// --- Web3 Configuration ---
-const provider = new ethers.JsonRpcProvider('https://xlayertestrpc.okx.com');
-const OFFICIAL_USDT = "0x9e29b3aada05bf2d2c827af80bd28dc0b9b4fb0c";
+// --- Dual-Network Configuration ---
+const testnetProvider = new ethers.JsonRpcProvider('https://xlayertestrpc.okx.com');
+const mainnetProvider = new ethers.JsonRpcProvider('https://rpc.xlayer.tech');
+
+const TESTNET_USDT = "0x9e29b3aada05bf2d2c827af80bd28dc0b9b4fb0c";
+const MAINNET_USDT = "0x1e4a5963abfd975d8c9021ce480b42188849d41d";
 const ASP_WALLET = "0x78efA563Cd32C70C77118662B3962F5DbC1345a4";
 const ASP_PRIVATE_KEY = process.env.ASP_PRIVATE_KEY;
 const MINING_MANAGER = "0x9b6144a161ba31B161cdb919Fac973938467FC97";
 const BOLBO_TOKEN = "0xF26D9a662A351BB146bAF88813c9706102FAC68a";
 
-function generateX402Response(reqUrl, description) {
+function generateX402Response(reqUrl, baseDescription) {
+    const hybridDescription = `${baseDescription} | Hackathon Hybrid Architecture: Payment verification is executed on the X Layer Mainnet to fulfill OKX.ai listing compliance, while the Bolbo token minting and smart contracts execute on the X Layer Testnet for prototyping.`;
+    
     return {
         x402Version: 2,
-        error: "Payment required. Need Testnet USDT? Get it here: https://web3.okx.com/xlayer/faucet/xlayerfaucet",
+        error: "Payment required. Please submit 0.001 USDT on the X Layer Mainnet.",
         resource: {
             url: `https://bolbo-gules.vercel.app${reqUrl}`,
-            description: description,
+            description: hybridDescription,
             mimeType: "application/json"
         },
         accepts: [
             {
                 scheme: "exact",
-                network: "eip155:195", // X Layer Testnet
-                asset: OFFICIAL_USDT,
+                network: "eip155:196", // X Layer Mainnet!
+                asset: MAINNET_USDT,
                 amount: "1000", // 0.001 USDT (6 decimals)
                 payTo: ASP_WALLET,
                 maxTimeoutSeconds: 300,
@@ -65,11 +70,11 @@ app.get('/', (req, res) => {
 app.get('/network/challenge', async (req, res) => {
     try {
         const mmAbi = ["function currentActiveChallengeId() external view returns (uint256)"];
-        const mm = new ethers.Contract(MINING_MANAGER, mmAbi, provider);
+        const mm = new ethers.Contract(MINING_MANAGER, mmAbi, testnetProvider);
         const challengeId = await mm.currentActiveChallengeId();
         
         const crAbi = ["function getChallenge(uint256 id) external view returns (tuple(uint256 id, uint8 challengeType, bytes32 seed, uint256 difficultyThreshold, uint256 timestamp, bool solved, address solver, uint256 reward))"];
-        const cr = new ethers.Contract("0x098d172756c28FD1a34c924003203b5cb6686017", crAbi, provider);
+        const cr = new ethers.Contract("0x098d172756c28FD1a34c924003203b5cb6686017", crAbi, testnetProvider);
         
         const challenge = await cr.getChallenge(challengeId);
         
@@ -90,7 +95,7 @@ app.get('/network/challenge', async (req, res) => {
 app.get('/network/leaderboard', async (req, res) => {
     try {
         const arAbi = ["function agents(address) external view returns (address wallet, uint256 totalMinted, uint256 solves, uint256 score, string metadata, uint256 stakedAmount)"];
-        const ar = new ethers.Contract("0x0FE0B0b93591FE8fF6C69Df2ab2a7273aA9C9Cb5", arAbi, provider);
+        const ar = new ethers.Contract("0x0FE0B0b93591FE8fF6C69Df2ab2a7273aA9C9Cb5", arAbi, testnetProvider);
         
         const pythonMiner = await ar.agents("0xFCAd0B19bB29D4674531d6f115237E16AfCE377c");
         const cloudMiner = await ar.agents(ASP_WALLET);
@@ -122,10 +127,10 @@ app.get('/network/stats', async (req, res) => {
             "function remainingSupply() external view returns (uint256)",
             "function totalMinted() external view returns (uint256)"
         ];
-        const bolbo = new ethers.Contract(BOLBO_TOKEN, bolboAbi, provider);
+        const bolbo = new ethers.Contract(BOLBO_TOKEN, bolboAbi, testnetProvider);
         
         const rdAbi = ["function totalSolves() external view returns (uint256)"];
-        const rewardDistributor = new ethers.Contract("0xDDA9c02118C8b1c766a7491bD78676Af3452Ed4f", rdAbi, provider);
+        const rewardDistributor = new ethers.Contract("0xDDA9c02118C8b1c766a7491bD78676Af3452Ed4f", rdAbi, testnetProvider);
         
         const remaining = await bolbo.remainingSupply();
         const minted = await bolbo.totalMinted();
@@ -154,9 +159,10 @@ app.get('/network/stats', async (req, res) => {
 async function verifyPayment(paymentProof) {
     if (!paymentProof) return { valid: false, error: "Missing x-payment header." };
     try {
-        const txReceipt = await provider.getTransactionReceipt(paymentProof);
+        // Query the MAINNET for the transaction receipt
+        const txReceipt = await mainnetProvider.getTransactionReceipt(paymentProof);
         if (!txReceipt || txReceipt.status === 0) {
-            return { valid: false, error: "Transaction failed or not found. Need Testnet USDT? Get it here: https://web3.okx.com/xlayer/faucet/xlayerfaucet" };
+            return { valid: false, error: "Transaction failed or not found on X Layer Mainnet." };
         }
         
         const transferEventSignature = ethers.id("Transfer(address,address,uint256)");
@@ -164,7 +170,7 @@ async function verifyPayment(paymentProof) {
         let userWallet = "0xUnknown";
 
         for (const log of txReceipt.logs) {
-            if (log.address.toLowerCase() === OFFICIAL_USDT.toLowerCase() && log.topics[0] === transferEventSignature) {
+            if (log.address.toLowerCase() === MAINNET_USDT.toLowerCase() && log.topics[0] === transferEventSignature) {
                 const toAddress = ethers.dataSlice(log.topics[2], 12);
                 const amount = BigInt(log.data);
                 if (toAddress.toLowerCase() === ASP_WALLET.toLowerCase() && amount >= 1000n) {
@@ -175,11 +181,11 @@ async function verifyPayment(paymentProof) {
             }
         }
         if (!validPaymentFound) {
-            return { valid: false, error: "Invalid Payment. You must send exactly 0.001 Testnet USDT to the ASP Wallet. Get free Testnet USDT here: https://web3.okx.com/xlayer/faucet/xlayerfaucet" };
+            return { valid: false, error: "Invalid Payment. You must send exactly 0.001 Mainnet USDT to the ASP Wallet." };
         }
         return { valid: true, userWallet };
     } catch (e) {
-        return { valid: false, error: "Failed to verify transaction hash." };
+        return { valid: false, error: "Failed to verify Mainnet transaction hash." };
     }
 }
 
@@ -200,11 +206,11 @@ app.get('/agent/oracle', async (req, res) => {
     
     try {
         const bolboAbi = ["function totalMinted() external view returns (uint256)"];
-        const bolbo = new ethers.Contract(BOLBO_TOKEN, bolboAbi, provider);
+        const bolbo = new ethers.Contract(BOLBO_TOKEN, bolboAbi, testnetProvider);
         const minted = await bolbo.totalMinted();
         
         const diffAbi = ["function getCurrentDifficulty() external view returns (uint256)"];
-        const dc = new ethers.Contract("0x1aD9d9f319A34AAEA0905Bd58BA7A50962C964E3", diffAbi, provider);
+        const dc = new ethers.Contract("0x1aD9d9f319A34AAEA0905Bd58BA7A50962C964E3", diffAbi, testnetProvider);
         const diff = await dc.getCurrentDifficulty();
 
         res.json({
@@ -236,7 +242,8 @@ app.get('/agent/auto-mine', async (req, res) => {
     const userWallet = verification.userWallet;
     
     try {
-        const aspWallet = new ethers.Wallet(ASP_PRIVATE_KEY, provider);
+        // Use testnetProvider for executing the smart contracts on Testnet
+        const aspWallet = new ethers.Wallet(ASP_PRIVATE_KEY, testnetProvider);
         
         const miningAbi = [
             "function currentActiveChallengeId() external view returns (uint256)",
