@@ -195,20 +195,45 @@ app.get('/agent/auto-mine', async (req, res) => {
     try {
         const aspWallet = new ethers.Wallet(ASP_PRIVATE_KEY, provider);
         
-        // 1. Extract User Wallet from Payment Tx
+        // 1. Extract and Verify Payment Transaction
         let userWallet = "0xUnknown";
         try {
-            const tx = await provider.getTransaction(paymentProof);
-            if (tx && tx.from) userWallet = tx.from;
+            const txReceipt = await provider.getTransactionReceipt(paymentProof);
+            if (!txReceipt || txReceipt.status === 0) {
+                return res.status(400).json({ 
+                    error: "Transaction failed or not found. Need Testnet USDT? Get it here: https://web3.okx.com/xlayer/faucet/xlayerfaucet" 
+                });
+            }
+
+            // Verify it is an ERC20 Transfer to the ASP Wallet
+            // Transfer event signature: Transfer(address indexed from, address indexed to, uint256 value)
+            const transferEventSignature = ethers.id("Transfer(address,address,uint256)");
+            
+            let validPaymentFound = false;
+            for (const log of txReceipt.logs) {
+                if (log.address.toLowerCase() === OFFICIAL_USDT.toLowerCase() && log.topics[0] === transferEventSignature) {
+                    const toAddress = ethers.dataSlice(log.topics[2], 12); // Extract address from indexed topic
+                    const amount = BigInt(log.data);
+                    
+                    if (toAddress.toLowerCase() === ASP_WALLET.toLowerCase() && amount >= 1000n) { // 1000 = 0.001 USDT (6 decimals)
+                        validPaymentFound = true;
+                        userWallet = ethers.dataSlice(log.topics[1], 12); // Extract 'from' address
+                        userWallet = ethers.getAddress(userWallet); // Format as checksum address
+                        break;
+                    }
+                }
+            }
+
+            if (!validPaymentFound) {
+                return res.status(402).json({ 
+                    error: "Invalid Payment. You must send exactly 0.001 Testnet USDT to the ASP Wallet. Get free Testnet USDT here: https://web3.okx.com/xlayer/faucet/xlayerfaucet" 
+                });
+            }
+
         } catch (e) {
-            console.error("Failed to parse payment tx", e);
+            console.error("Failed to verify payment tx", e);
+            return res.status(400).json({ error: "Failed to verify transaction hash." });
         }
-
-        if (userWallet === "0xUnknown") {
-            return res.status(400).json({ error: "Invalid x-payment transaction hash." });
-        }
-
-        // 2. Perform Automated Mining
         const miningAbi = [
             "function currentActiveChallengeId() external view returns (uint256)",
             "function commitSolution(uint256 challengeId, bytes32 commitHash) external",
