@@ -60,14 +60,14 @@ const x402Middleware = async (req, res, next) => {
     try {
         const adapter = {
             getMethod: () => req.method,
-            getPath: () => req.path,
+            getPath: () => req.originalUrl.split('?')[0],
             getUrl: () => `${req.protocol}://${req.get('host')}${req.originalUrl}`,
             getHeader: (name) => req.header(name),
             getAcceptHeader: () => req.header('accept') || '*/*',
             getUserAgent: () => req.header('user-agent') || '',
         };
         
-        const context = { adapter, path: req.path, method: req.method };
+        const context = { adapter, path: req.originalUrl.split('?')[0], method: req.method };
         const result = await httpServer.processHTTPRequest(context, {});
         
         if (result.type === 'no-payment-required') {
