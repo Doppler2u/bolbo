@@ -2,71 +2,109 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { ethers } from 'ethers';
+import { x402ResourceServer } from '@okxweb3/x402-core/server';
+import { x402HTTPResourceServer } from '@okxweb3/x402-core/http';
+import { OKXFacilitatorClient } from '@okxweb3/x402-core';
+import { ExactEvmScheme } from '@okxweb3/x402-evm/exact/server';
 
-dotenv.config();
+dotenv.config({ path: '../.env' });
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Add logging so we can see the agent's requests live!
 app.use((req, res, next) => {
     console.log(`[ASP API] Received ${req.method} request to ${req.url}`);
     next();
 });
 
-// --- Dual-Network Configuration ---
 const testnetProvider = new ethers.JsonRpcProvider('https://xlayertestrpc.okx.com');
-const mainnetProvider = new ethers.JsonRpcProvider('https://rpc.xlayer.tech');
 
-const TESTNET_USDT = "0x9e29b3aada05bf2d2c827af80bd28dc0b9b4fb0c";
-const MAINNET_USDT = "0x1e4a5963abfd975d8c9021ce480b42188849d41d";
 const ASP_WALLET = "0x162cacdfc22b966ef4f39060349ecbe6af66fb8c";
 const ASP_PRIVATE_KEY = process.env.ASP_PRIVATE_KEY;
 const MINING_MANAGER = "0x9b6144a161ba31B161cdb919Fac973938467FC97";
 const BOLBO_TOKEN = "0xF26D9a662A351BB146bAF88813c9706102FAC68a";
 
-function send402Response(res, reqUrl, baseDescription) {
-    const hybridDescription = `${baseDescription} | Hackathon Hybrid Architecture: Payment verification is executed on the X Layer Mainnet to fulfill OKX.ai listing compliance, while the Bolbo token minting and smart contracts execute on the X Layer Testnet for prototyping.`;
-    
-    // 1. Build the exact x402 challenge JSON OKX is looking for
-    const challengeJson = {
-        x402Version: "1.0",
-        resource: "bolbo-request-" + Date.now(), 
-        accepts: [
-            {
-                scheme: "EVM",
-                network: "196", // OKX X Layer Mainnet
-                asset: "USDT",
-                amount: "0.001",
-                payTo: ASP_WALLET,
-                maxTimeoutSeconds: 300,
-                extra: "{}"
+// ==========================================
+// 🛡️ OKX PAYMENT SDK INTEGRATION (x402)
+// ==========================================
+
+const facilitatorClient = new OKXFacilitatorClient({
+  apiKey: process.env.OKX_API_KEY,
+  secretKey: process.env.OKX_SECRET_KEY,
+  passphrase: process.env.OKX_PASSPHRASE,
+});
+
+const resourceServer = new x402ResourceServer(facilitatorClient)
+  .register('eip155:*', new ExactEvmScheme());
+
+await resourceServer.initialize();
+console.log("[ASP API] OKX x402 Resource Server Initialized.");
+
+const sdkRoutes = {
+  'GET /agent/oracle': {
+    accepts: { scheme: 'exact', network: 'eip155:196', payTo: ASP_WALLET, price: '0.001' },
+    description: 'Provides deep network analytics and hash rate insights for the Bolbo economy.',
+    mimeType: 'application/json',
+  },
+  'GET /agent/auto-mine': {
+    accepts: { scheme: 'exact', network: 'eip155:196', payTo: ASP_WALLET, price: '0.001' },
+    description: 'Autonomously mine Bolbo memecoins. The Cloud ASP will solve the puzzle, pay the gas, and deliver 100 Bolbo directly to your wallet.',
+    mimeType: 'application/json',
+  }
+};
+
+const httpServer = new x402HTTPResourceServer(resourceServer, sdkRoutes);
+
+const x402Middleware = async (req, res, next) => {
+    try {
+        const adapter = {
+            getMethod: () => req.method,
+            getPath: () => req.path,
+            getUrl: () => `${req.protocol}://${req.get('host')}${req.originalUrl}`,
+            getHeader: (name) => req.header(name),
+            getAcceptHeader: () => req.header('accept') || '*/*',
+            getUserAgent: () => req.header('user-agent') || '',
+        };
+        
+        const context = { adapter, path: req.path, method: req.method };
+        const result = await httpServer.processHTTPRequest(context, {});
+        
+        if (result.type === 'no-payment-required') {
+            return next();
+        }
+        
+        if (result.type === 'payment-error') {
+            const r = result.response;
+            res.status(r.status);
+            if (r.headers) {
+                for (const [k, v] of Object.entries(r.headers)) {
+                    res.setHeader(k, v);
+                }
             }
-        ]
-    };
+            if (r.body) {
+                return res.json(r.body);
+            }
+            return res.send();
+        }
+        
+        if (result.type === 'payment-verified') {
+            req.payment = result;
+            return next();
+        }
+    } catch (e) {
+        console.error("SDK Middleware Error:", e);
+        res.status(500).json({ error: "Internal payment processing error" });
+    }
+};
 
-    // 2. Convert the JSON object into a Base64 string
-    const base64Challenge = Buffer.from(JSON.stringify(challengeJson)).toString('base64');
-
-    // 3. Set the specific Headers that the OKX backend strictly requires
-    res.setHeader("PAYMENT-REQUIRED", base64Challenge);
-    res.setHeader("Access-Control-Expose-Headers", "PAYMENT-REQUIRED");
-
-    // 4. Return the 402 status along with a JSON body for debugging
-    return res.status(402).json({
-        error: "Payment required. Please submit 0.001 USDT on the X Layer Mainnet.",
-        description: hybridDescription,
-        challenge: challengeJson
-    });
-}
-// --------------------------
+app.use('/agent/oracle', x402Middleware);
+app.use('/agent/auto-mine', x402Middleware);
 
 // ==========================================
 // 🚀 PUBLIC ANALYTICS (FREE INFRASTRUCTURE)
 // ==========================================
 
-// Root endpoint for Vercel health check
 app.get('/', (req, res) => {
     res.json({
         name: "Bolbo Memecoin ASP API",
@@ -76,7 +114,6 @@ app.get('/', (req, res) => {
     });
 });
 
-// Broadcasts the active cryptographic puzzle
 app.get('/network/challenge', async (req, res) => {
     try {
         const mmAbi = ["function currentActiveChallengeId() external view returns (uint256)"];
@@ -101,7 +138,6 @@ app.get('/network/challenge', async (req, res) => {
     }
 });
 
-// Ranks the top AI mining agents
 app.get('/network/leaderboard', async (req, res) => {
     try {
         const arAbi = ["function agents(address) external view returns (address wallet, uint256 totalMinted, uint256 solves, uint256 score, string metadata, uint256 stakedAmount)"];
@@ -114,7 +150,6 @@ app.get('/network/leaderboard', async (req, res) => {
         if (pythonMiner.totalMinted > 0n) agentsList.push(pythonMiner);
         if (cloudMiner.totalMinted > 0n) agentsList.push(cloudMiner);
         
-        // Sort by score
         agentsList.sort((a, b) => Number(b.score - a.score));
 
         res.json({ 
@@ -130,7 +165,6 @@ app.get('/network/leaderboard', async (req, res) => {
     }
 });
 
-// Consolidated network stats (difficulty, active miners, ROI)
 app.get('/network/stats', async (req, res) => {
     try {
         const bolboAbi = [
@@ -161,56 +195,12 @@ app.get('/network/stats', async (req, res) => {
     }
 });
 
-
 // ==========================================
 // 💎 PREMIUM AI SERVICES (GATED VIA x402)
 // ==========================================
 
-async function verifyPayment(paymentProof) {
-    if (!paymentProof) return { valid: false, error: "Missing x-payment header." };
-    try {
-        // Query the MAINNET for the transaction receipt
-        const txReceipt = await mainnetProvider.getTransactionReceipt(paymentProof);
-        if (!txReceipt || txReceipt.status === 0) {
-            return { valid: false, error: "Transaction failed or not found on X Layer Mainnet." };
-        }
-        
-        const transferEventSignature = ethers.id("Transfer(address,address,uint256)");
-        let validPaymentFound = false;
-        let userWallet = "0xUnknown";
-
-        for (const log of txReceipt.logs) {
-            if (log.address.toLowerCase() === MAINNET_USDT.toLowerCase() && log.topics[0] === transferEventSignature) {
-                const toAddress = ethers.dataSlice(log.topics[2], 12);
-                const amount = BigInt(log.data);
-                if (toAddress.toLowerCase() === ASP_WALLET.toLowerCase() && amount >= 1000n) {
-                    validPaymentFound = true;
-                    userWallet = ethers.getAddress(ethers.dataSlice(log.topics[1], 12));
-                    break;
-                }
-            }
-        }
-        if (!validPaymentFound) {
-            return { valid: false, error: "Invalid Payment. You must send exactly 0.001 Mainnet USDT to the ASP Wallet." };
-        }
-        return { valid: true, userWallet };
-    } catch (e) {
-        return { valid: false, error: "Failed to verify Mainnet transaction hash." };
-    }
-}
-
-// The Premium AI Data Feed
 app.get('/agent/oracle', async (req, res) => {
-    const paymentProof = req.headers['x-payment'];
-    if (!paymentProof) {
-        return send402Response(res, req.url, "Provides deep network analytics and hash rate insights for the Bolbo economy.");
-    }
-    
-    const verification = await verifyPayment(paymentProof);
-    if (!verification.valid) {
-        return res.status(402).json({ error: verification.error });
-    }
-    
+    // If the request reaches here, the OKX SDK middleware has cryptographically verified the payment!
     try {
         const bolboAbi = ["function totalMinted() external view returns (uint256)"];
         const bolbo = new ethers.Contract(BOLBO_TOKEN, bolboAbi, testnetProvider);
@@ -232,21 +222,14 @@ app.get('/agent/oracle', async (req, res) => {
     }
 });
 
-// The Flagship Cloud Auto-Miner
 app.get('/agent/auto-mine', async (req, res) => {
-    const paymentProof = req.headers['x-payment'];
-    if (!paymentProof) {
-        return send402Response(res, req.url, "Autonomously mine Bolbo memecoins. The Cloud ASP will solve the puzzle, pay the gas, and deliver 100 Bolbo directly to your wallet.");
+    // Try to extract the user's wallet address from the SDK payment payload
+    let userWallet = ASP_WALLET; // fallback
+    if (req.payment && req.payment.paymentPayload && req.payment.paymentPayload.payload && req.payment.paymentPayload.payload.transaction) {
+        userWallet = req.payment.paymentPayload.payload.transaction.from || ASP_WALLET;
     }
-    
-    const verification = await verifyPayment(paymentProof);
-    if (!verification.valid) {
-        return res.status(402).json({ error: verification.error });
-    }
-    const userWallet = verification.userWallet;
     
     try {
-        // Use testnetProvider for executing the smart contracts on Testnet
         const aspWallet = new ethers.Wallet(ASP_PRIVATE_KEY, testnetProvider);
         
         const miningAbi = [
@@ -259,7 +242,6 @@ app.get('/agent/auto-mine', async (req, res) => {
         const challengeId = await miningContract.currentActiveChallengeId(); 
         const solution = "RRDRDRDRRDRDRDRRDRDRDRRDRDRDR";
         
-        // Use keccak256 matching Solidity's abi.encodePacked
         const commitHash = ethers.solidityPackedKeccak256(
             ['string', 'address'],
             [solution, aspWallet.address]
@@ -272,7 +254,6 @@ app.get('/agent/auto-mine', async (req, res) => {
         const revealTx = await miningContract.revealSolution(challengeId, solution, proof);
         await revealTx.wait(1);
         
-        // 3. Deliver Tokens to User
         const bolboAbi = ["function transfer(address to, uint256 amount) external returns (bool)"];
         const bolboContract = new ethers.Contract(BOLBO_TOKEN, bolboAbi, aspWallet);
         const transferTx = await bolboContract.transfer(userWallet, ethers.parseEther("100"));
@@ -289,8 +270,6 @@ app.get('/agent/auto-mine', async (req, res) => {
         console.error("Auto-mine error:", err);
         
         let errorMessage = "Automated mining failed. " + err.message;
-        
-        // Parse raw Solidity custom errors for a better User Experience
         if (err.message.includes("0xfb8f41b2")) {
             errorMessage = "ASP Wallet Error: Insufficient USDT Allowance. The ASP must approve the MiningManager to spend its USDT.";
         } else if (err.message.includes("0xe450d38c")) {
