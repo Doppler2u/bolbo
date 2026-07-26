@@ -8,7 +8,7 @@ function App() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch('https://bolbo-indol.vercel.app/network/stats');
+        const response = await fetch('https://bolbo-gules.vercel.app/network/stats');
         const data = await response.json();
         setStats(data);
         setLoading(false);

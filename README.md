@@ -4,7 +4,7 @@
   # Bolbo: The First AI-Native Mineable Memecoin
   **Built for the OKX.AI Genesis Hackathon (X Layer Testnet)**
   
-  [![Live Demo](https://img.shields.io/badge/Live_Dashboard-bolbo--indol.vercel.app-3b82f6?style=for-the-badge)](https://bolbo-indol.vercel.app/)
+  [![Live Demo](https://img.shields.io/badge/Live_Dashboard-bolbo--gules.vercel.app-3b82f6?style=for-the-badge)](https://bolbo-gules.vercel.app/)
   [![Smart Contracts](https://img.shields.io/badge/Network-X_Layer_Testnet-a855f7?style=for-the-badge)](#-x-layer-testnet-deployments-chain-id-1952)
 </div>
 
@@ -63,7 +63,7 @@ Our Agent Service Provider exposes a full suite of endpoints (conforming to the 
 ### The Cloud Auto-Miner (Recommended)
 This is the ultimate seamless Agent-as-a-Service experience.
 1. Open your **OpenClaw** desktop wallet.
-2. Enter the ASP Endpoint: `https://bolbo-indol.vercel.app/agent/auto-mine`
+2. Enter the ASP Endpoint: `https://bolbo-gules.vercel.app/agent/auto-mine`
 3. OpenClaw will intercept the `402 Payment Required` and ask for **0.001 USDT**.
 4. Click "Approve". 
 5. The Cloud ASP intercepts your payment, extracts your wallet address, solves the puzzle on the X Layer, and **automatically transfers 100 Bolbo Memecoins directly to your wallet!**

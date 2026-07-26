@@ -5,7 +5,7 @@ import hashlib
 from web3 import Web3
 from eth_account import Account
 
-API_BASE_URL = os.getenv("API_BASE_URL", "https://bolbo-indol.vercel.app")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://bolbo-gules.vercel.app")
 RPC_URL = "https://xlayertestrpc.okx.com"
 w3 = Web3(Web3.HTTPProvider(RPC_URL))
 

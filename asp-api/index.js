@@ -28,7 +28,7 @@ function generateX402Response(reqUrl, description) {
         x402Version: 2,
         error: "Payment required. Need Testnet USDT? Get it here: https://web3.okx.com/xlayer/faucet/xlayerfaucet",
         resource: {
-            url: `https://bolbo-indol.vercel.app${reqUrl}`,
+            url: `https://bolbo-gules.vercel.app${reqUrl}`,
             description: description,
             mimeType: "application/json"
         },
