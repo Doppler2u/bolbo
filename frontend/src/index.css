@@ -21,7 +21,15 @@ body {
   background-color: var(--bg-dark);
   color: var(--text-main);
   line-height: 1.5;
-  overflow-x: hidden;
+  overflow: hidden;
+  height: 100vh;
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 /* CSS Parallax Twinkling Stars */
@@ -89,8 +97,9 @@ nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem 2rem;
+  padding: 1rem 2rem;
   max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
 }
 
@@ -129,12 +138,13 @@ nav {
 
 /* Hero Section */
 .hero {
-  padding: 4rem 2rem;
+  padding: 1rem 2rem;
   max-width: 1100px;
+  width: 100%;
   margin: 0 auto;
   display: flex;
   align-items: center;
-  gap: 4rem;
+  gap: 2rem;
 }
 
 .hero-image-container {
@@ -145,7 +155,7 @@ nav {
 
 .hero-image {
   width: 100%;
-  max-width: 450px;
+  max-width: 250px;
   border-radius: 50%;
   /* Glowing physical frame */
   box-shadow: 15px 15px 30px var(--neo-shadow-dark), 
@@ -167,7 +177,7 @@ nav {
 }
 
 .hero h1 {
-  font-size: 3.8rem;
+  font-size: 2.8rem;
   font-weight: 800;
   line-height: 1.1;
   margin-bottom: 1.5rem;
@@ -182,19 +192,20 @@ nav {
 }
 
 .hero p {
-  font-size: 1.15rem;
+  font-size: 1rem;
   color: var(--text-muted);
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
 }
 
 /* Dashboard Grid */
 .dashboard {
   max-width: 1100px;
-  margin: 0 auto 6rem;
+  width: 100%;
+  margin: 0 auto 1rem;
   padding: 0 2rem;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
 }
 
 .neo-card-header {
@@ -209,15 +220,15 @@ nav {
 }
 
 .neo-card-value {
-  font-size: 2.2rem;
+  font-size: 1.8rem;
   font-weight: bold;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.2rem;
   color: #fff;
   text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
 }
 
 .neo-card-subtext {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
 }
 

@@ -125,7 +125,7 @@ function App() {
         </div>
       )}
 
-      <footer style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)' }}>
+      <footer style={{ textAlign: 'center', padding: '1rem 2rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
         <p>Built for the OKX.AI Hackathon. Running live on X Layer Testnet.</p>
       </footer>
     </>
