@@ -52,7 +52,7 @@ function App() {
 
           <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
             <a href="https://www.okx.ai/agents/9423" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '0.8rem 1.5rem', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))', color: '#fff', textDecoration: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1.1rem', boxShadow: '0 4px 15px rgba(168, 85, 247, 0.4)', transition: 'transform 0.2s ease' }}>
-              Hire Agent 9423 on OKX.AI
+              Agent Live (ID: 9423)
             </a>
           </div>
 
