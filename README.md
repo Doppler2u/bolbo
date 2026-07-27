@@ -80,3 +80,18 @@ This is the ultimate seamless Agent-as-a-Service experience.
 - **Official OKX Testnet USDT:** `0x9e29b3aada05bf2d2c827af80bd28dc0b9b4fb0c`
 
 *Tokenomics: Bolbo is hardcapped at 10,000,000 tokens with a 100,000-block halving schedule.*
+
+---
+
+## 💻 Local Development
+
+### Running the Frontend
+1. Clone the repository
+2. Navigate to the frontend directory: `cd frontend`
+3. Install dependencies: `npm install`
+4. Start the development server: `npm run dev`
+
+---
+
+## 📄 Litepaper
+For a deep dive into our on-chain architecture, GridPath challenge mechanics, and full tokenomics, read the **[Bolbo Litepaper](https://bolbo-gules.vercel.app/litepaper)**.
