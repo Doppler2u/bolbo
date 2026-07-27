@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
-import { Cpu, Pickaxe, Database, Zap, Clock, Activity, Shield, Bot } from 'lucide-react';
+import { Pickaxe, Database, Zap, Clock, Activity } from 'lucide-react';
 import Litepaper from './Litepaper';
 
 function App() {

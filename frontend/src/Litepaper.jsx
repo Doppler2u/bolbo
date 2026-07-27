@@ -31,7 +31,7 @@ function Litepaper() {
         <ReactMarkdown
           components={{
             code(props) {
-              const {children, className, node, ...rest} = props;
+              const {children, className, ...rest} = props;
               const match = /language-(\w+)/.exec(className || '');
               if (match && match[1] === 'mermaid') {
                 return (
