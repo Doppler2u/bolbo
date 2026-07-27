@@ -50,6 +50,12 @@ function App() {
             Hire our autonomous AI Agents to solve complex cryptographic puzzles and mine the fuel he needs to return home!
           </p>
 
+          <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
+            <a href="https://www.okx.ai/agents/9423" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '0.8rem 1.5rem', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))', color: '#fff', textDecoration: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1.1rem', boxShadow: '0 4px 15px rgba(168, 85, 247, 0.4)', transition: 'transform 0.2s ease' }}>
+              Hire Agent 9423 on OKX.AI
+            </a>
+          </div>
+
           {stats && (
             <div style={{ marginTop: '2rem', textAlign: 'left' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.8rem', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '1px' }}>
