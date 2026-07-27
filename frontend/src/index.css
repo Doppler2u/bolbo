@@ -1,8 +1,8 @@
 :root {
   /* Neumorphic Spaceship Base Colors */
-  --bg-dark: #20232a;
-  --neo-shadow-dark: #15171c;
-  --neo-shadow-light: #2b2f38;
+  --bg-dark: #050505;
+  --neo-shadow-dark: #000000;
+  --neo-shadow-light: #151515;
   --text-main: #e2e8f0;
   --text-muted: #94a3b8;
   --accent-primary: #3b82f6;
@@ -34,23 +34,33 @@ body {
 }
 
 /* CSS Parallax Twinkling Stars */
-body::before {
+body::before, body::after {
   content: "";
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   z-index: -1;
+  background-repeat: repeat;
+  pointer-events: none;
+}
+
+body::before {
   background-image: 
     radial-gradient(1.5px 1.5px at 20px 30px, #ffffff, rgba(0,0,0,0)),
-    radial-gradient(1.5px 1.5px at 40px 70px, #ffffff, rgba(0,0,0,0)),
-    radial-gradient(2px 2px at 90px 40px, #ffffff, rgba(0,0,0,0)),
-    radial-gradient(2.5px 2.5px at 160px 120px, #ffffff, rgba(0,0,0,0));
-  background-repeat: repeat;
+    radial-gradient(2px 2px at 90px 40px, #ffffff, rgba(0,0,0,0));
   background-size: 200px 200px;
-  animation: twinkle 3s ease-in-out infinite alternate;
+  animation: twinkle 3.2s ease-in-out infinite alternate;
+}
+
+body::after {
+  background-image: 
+    radial-gradient(1.5px 1.5px at 40px 70px, #ffffff, rgba(0,0,0,0)),
+    radial-gradient(2.5px 2.5px at 160px 120px, #ffffff, rgba(0,0,0,0));
+  background-size: 250px 250px;
+  animation: twinkle 4.7s ease-in-out infinite alternate-reverse;
 }
 
 @keyframes twinkle {
-  0% { opacity: 0.2; transform: scale(1); }
+  0% { opacity: 0.15; transform: scale(1); }
   100% { opacity: 1; transform: scale(1.05); }
 }
 
