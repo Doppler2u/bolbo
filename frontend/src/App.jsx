@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, Link } from 'react-router-dom';
 import { Cpu, Pickaxe, Database, Zap, Clock, Activity, Shield, Bot } from 'lucide-react';
+import Litepaper from './Litepaper';
 
 function App() {
   const [stats, setStats] = useState(null);
@@ -29,16 +31,25 @@ function App() {
       <div class="bg-glow glow-bottom"></div>
 
       <nav>
-        <div className="logo">
-          <img src="/bolbo_logo.png" alt="Bolbo Logo" className="logo-icon" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} /> Bolbo
+        <div className="logo" style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+          <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <img src="/bolbo_logo.png" alt="Bolbo Logo" className="logo-icon" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} /> Bolbo
+          </Link>
+          <div style={{ display: 'flex', gap: '1.5rem', fontSize: '1rem' }}>
+            <Link to="/" style={{ textDecoration: 'none', color: 'var(--text-muted)', fontWeight: '500' }}>Dashboard</Link>
+            <Link to="/litepaper" style={{ textDecoration: 'none', color: 'var(--text-muted)', fontWeight: '500' }}>Litepaper</Link>
+          </div>
         </div>
         <div style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
           <span className="live-indicator"></span> X Layer Testnet Live
         </div>
       </nav>
 
-      <header className="hero">
-        <div className="hero-image-container">
+      <Routes>
+        <Route path="/" element={
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+            <header className="hero">
+              <div className="hero-image-container">
           <img src="/bolbo.png" alt="Bolbo the Alien" className="hero-image" />
         </div>
         
@@ -128,8 +139,12 @@ function App() {
             </div>
           </div>
 
-        </div>
-      )}
+              </div>
+            )}
+          </div>
+        } />
+        <Route path="/litepaper" element={<Litepaper />} />
+      </Routes>
 
       <footer style={{ textAlign: 'center', padding: '1rem 2rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
         <p>Built for the OKX.AI Hackathon. Running live on X Layer Testnet.</p>
